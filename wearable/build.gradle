@@ -2,9 +2,16 @@ apply plugin: 'com.android.application'
 
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion '23.0.1'
-
+    signingConfigs {
+        config {
+            keyAlias 'example'
+            keyPassword 'example'
+            storeFile file('C:/Users/ryante.AUTH/AndroidStudioProjects/Keys/keystore.jks')
+            storePassword 'example'
+        }
+    }
+    compileSdkVersion 25
+    buildToolsVersion '25.0.2'
     defaultConfig {
         applicationId "com.example.android.sunshine.app"
         minSdkVersion 23
@@ -16,6 +23,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+        }
+        debug {
+            signingConfig signingConfigs.config
         }
     }
 }
@@ -24,5 +35,4 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.google.android.support:wearable:2.0.0-beta1'
     compile 'com.google.android.gms:play-services-wearable:10.0.1'
-    compile project(path: ':app')
 }

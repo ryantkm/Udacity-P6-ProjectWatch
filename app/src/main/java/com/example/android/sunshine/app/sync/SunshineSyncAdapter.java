@@ -96,8 +96,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
     @Override
     public void onConnected(Bundle bundle) {
 
-        PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
-
+        PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data").setUrgent();
         putDataMapRequest.getDataMap().putLong("timestamp",System.currentTimeMillis());
 
         Context context = getContext();
@@ -107,23 +106,23 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
 
         // Retrieving data from database to be sent to wearable
         if (cursor.moveToFirst()) {
-            int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+            int iconId = cursor.getInt(INDEX_WEATHER_ID);
             double high = cursor.getDouble(INDEX_MAX_TEMP);
             double low = cursor.getDouble(INDEX_MIN_TEMP);
 
-            putDataMapRequest.getDataMap().putString("high-temp",Integer.toString((int)high));
-            putDataMapRequest.getDataMap().putString("low-temp",Integer.toString((int)low));
-            putDataMapRequest.getDataMap().putInt("icon-id",weatherId);
+            putDataMapRequest.getDataMap().putString("high-temp", String.valueOf(high));
+            putDataMapRequest.getDataMap().putString("low-temp", String.valueOf(low));
+            putDataMapRequest.getDataMap().putString("icon-id", String.valueOf(iconId));
 
-            PutDataRequest putDataReq = putDataMapRequest.asPutDataRequest();
-            Wearable.DataApi.putDataItem(mGoogleApiClient,putDataReq)
+            PutDataRequest putDataReq = putDataMapRequest.asPutDataRequest().setUrgent();
+            Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq)
                     .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
                         @Override
                         public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
                             if(dataItemResult.getStatus().isSuccess())
-                                Log.d(LOG_TAG, "Successfully sent wearable data");
+                                Log.d(LOG_TAG, "Wearable Status: Successfully sent wearable data");
                             else
-                                Log.e(LOG_TAG, "Error sending wearable data");
+                                Log.e(LOG_TAG, "Wearable Status: Error sending wearable data");
                         }
                     });
         }

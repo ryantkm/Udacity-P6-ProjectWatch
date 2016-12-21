@@ -322,6 +322,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
                 String lowTempDisplay = mLowTemp + "°";
                 canvas.drawText(lowTempDisplay, x, mXOffset + mYOffset, mTempLowPaint);
+//                Log.d(TAG, "Weather High: " + mHighTemp + "Weather Low: " + mLowTemp);
             }
         }
 
