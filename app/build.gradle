@@ -10,12 +10,12 @@ android {
             storePassword 'example'
         }
     }
-    compileSdkVersion 25
+    compileSdkVersion 24
     buildToolsVersion '25.0.2'
     defaultConfig {
         applicationId "com.example.android.sunshine.app"
         minSdkVersion 10
-        targetSdkVersion 25
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
@@ -31,19 +31,19 @@ android {
         }
     }
     buildTypes.each {
-        it.buildConfigField 'String', 'OPEN_WEATHER_MAP_API_KEY', "\"3e405c71b537f4849ad4c39eb4d91048\""
+        it.buildConfigField 'String', 'OPEN_WEATHER_MAP_API_KEY', MyOpenWeatherMapApiKey
     }
 }
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.github.bumptech.glide:glide:3.5.2'
-    compile 'com.android.support:support-annotations:25.1.0'
-    compile 'com.android.support:gridlayout-v7:25.1.0'
-    compile 'com.android.support:cardview-v7:25.1.0'
-    compile 'com.android.support:appcompat-v7:25.1.0'
-    compile 'com.android.support:design:25.1.0'
-    compile 'com.android.support:recyclerview-v7:25.1.0'
+    compile 'com.android.support:support-annotations:24.0.0'
+    compile 'com.android.support:gridlayout-v7:24.0.0'
+    compile 'com.android.support:cardview-v7:24.0.0'
+    compile 'com.android.support:appcompat-v7:24.0.0'
+    compile 'com.android.support:design:24.0.0'
+    compile 'com.android.support:recyclerview-v7:24.0.0'
     compile 'com.google.android.apps.muzei:muzei-api:2.0'
     compile 'com.google.android.gms:play-services-gcm:10.0.1'
     compile 'com.google.android.gms:play-services-location:10.0.1'

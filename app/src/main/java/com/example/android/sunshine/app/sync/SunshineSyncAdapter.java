@@ -110,9 +110,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
             double high = cursor.getDouble(INDEX_MAX_TEMP);
             double low = cursor.getDouble(INDEX_MIN_TEMP);
 
-            putDataMapRequest.getDataMap().putString("high-temp", String.valueOf(high));
-            putDataMapRequest.getDataMap().putString("low-temp", String.valueOf(low));
-            putDataMapRequest.getDataMap().putString("icon-id", String.valueOf(iconId));
+            putDataMapRequest.getDataMap().putString("high-temp", String.valueOf(Math.round(high)));
+            putDataMapRequest.getDataMap().putString("low-temp", String.valueOf(Math.round(low)));
+            putDataMapRequest.getDataMap().putInt("icon-id", iconId);
 
             PutDataRequest putDataReq = putDataMapRequest.asPutDataRequest().setUrgent();
             Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq)

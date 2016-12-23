@@ -21,6 +21,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -48,11 +50,10 @@ import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-
-import static android.R.attr.x;
 
 /**
  * Digital watch face with seconds. In ambient mode, the seconds aren't displayed. On devices with
@@ -61,6 +62,8 @@ import static android.R.attr.x;
 public class MyWatchFace extends CanvasWatchFaceService {
 
     private static final String TAG = MyWatchFace.class.getSimpleName();
+
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM dd yyyy");
 
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
@@ -75,6 +78,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
      * Handler message id for updating the time periodically in interactive mode.
      */
     private static final int MSG_UPDATE_TIME = 0;
+    private static final String GET_WEATHER_DATA = "/get_weather_data";
+    private static final long CONNECTION_TIME_OUT_MS = 100;
+    private String nodeId;
+    private static final String MESSAGE = "get_weather_data";
 
     @Override
     public Engine onCreateEngine() {
@@ -105,12 +112,14 @@ public class MyWatchFace extends CanvasWatchFaceService {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
-        Paint mTextPaint;
+        Paint mTimePaint;
         boolean mAmbient;
         Calendar mCalendar;
+        Paint mDatePaint;
         Paint mWeatherPaint;
-        Paint mTempHighPaint;
-        Paint mTempLowPaint;
+        Paint mHighTempPaint;
+        Paint mLowTempPaint;
+        Paint mLinePaint;
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
@@ -159,14 +168,15 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(getColor(R.color.background));
 
-            mTextPaint = new Paint();
-            mTextPaint = createTextPaint(getColor(R.color.digital_text));
+            mTimePaint = new Paint();
+            mTimePaint = createTextPaint(getColor(R.color.digital_text));
 
             mCalendar = Calendar.getInstance();
 
+            mDatePaint = createTextPaint(getColor(R.color.grey));
             mWeatherPaint = new Paint();
-            mTempHighPaint = createTextPaint(getColor(R.color.digital_text));
-            mTempLowPaint = createTextPaint(getColor(R.color.grey));
+            mHighTempPaint = createTextPaint(getColor(R.color.digital_text));
+            mLowTempPaint = createTextPaint(getColor(R.color.grey));
         }
 
         @Override
@@ -228,10 +238,17 @@ public class MyWatchFace extends CanvasWatchFaceService {
             boolean isRound = insets.isRound();
             mXOffset = resources.getDimension(isRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
-            float textSize = resources.getDimension(isRound
+            float normalTextSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
+            float smallTextSize = resources.getDimension(isRound
+                    ? R.dimen.small_text_size_round : R.dimen.small_text_size);
+            float mediumTextSize = resources.getDimension(isRound
+                    ? R.dimen.medium_text_size_round : R.dimen.medium_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            mTimePaint.setTextSize(normalTextSize);
+            mDatePaint.setTextSize(smallTextSize);
+            mHighTempPaint.setTextSize(mediumTextSize);
+            mLowTempPaint.setTextSize(mediumTextSize);
         }
 
         @Override
@@ -252,7 +269,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             if (mAmbient != inAmbientMode) {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
-                    mTextPaint.setAntiAlias(!inAmbientMode);
+                    mTimePaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -285,6 +302,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
             invalidate();
         }
 
+        public float centerHorizontally(Rect bounds, Paint paint, String text) {
+            float startingXPoint = bounds.centerX() - paint.measureText(text) / 2;
+            return startingXPoint;
+        }
+
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
             // Draw the background.
@@ -294,35 +316,60 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
-            // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
-            String text = mAmbient
-                    ? String.format("%d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE))
-                    : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            String timeText = String.format("%d:%02d", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE));
+            canvas.drawText(timeText, centerHorizontally(bounds, mTimePaint, timeText), mYOffset, mTimePaint);
 
-//            // Draw the weather icon
-//            if (mIconID != -1) {
-//                int drawableRes = Utility.getIconResourceForWeatherCondition(mIconID);
-//                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), drawableRes);
-//                canvas.drawBitmap(bitmap, x, mYOffset, mWeatherPaint);
-//            }
+            String dateText = dateFormat.format(mCalendar.getTime());
+            canvas.drawText(dateText, centerHorizontally(bounds, mDatePaint, dateText), mYOffset + 45, mDatePaint);
+
+            mLinePaint = new Paint();
+            mLinePaint.setColor(getColor(R.color.grey));
+            canvas.drawLine(bounds.centerX() - 30, bounds.centerY(), bounds.centerX() + 30, bounds.centerY(), mLinePaint);
+
+            int drawableRes = R.drawable.ic_clear;
+            // Draw the weather icon
+            if (mIconID != -1) {
+                if (mIconID >= 200 && mIconID <= 232) {
+                    drawableRes = R.drawable.ic_storm;
+                } else if (mIconID >= 300 && mIconID <= 321) {
+                    drawableRes = R.drawable.ic_light_rain;
+                } else if (mIconID >= 500 && mIconID <= 504) {
+                    drawableRes = R.drawable.ic_rain;
+                } else if (mIconID == 511) {
+                    drawableRes = R.drawable.ic_snow;
+                } else if (mIconID >= 520 && mIconID <= 531) {
+                    drawableRes = R.drawable.ic_rain;
+                } else if (mIconID >= 600 && mIconID <= 622) {
+                    drawableRes = R.drawable.ic_snow;
+                } else if (mIconID >= 701 && mIconID <= 761) {
+                    drawableRes = R.drawable.ic_fog;
+                } else if (mIconID == 761 || mIconID == 781) {
+                    drawableRes = R.drawable.ic_storm;
+                } else if (mIconID == 800) {
+                    drawableRes = R.drawable.ic_clear;
+                } else if (mIconID == 801) {
+                    drawableRes = R.drawable.ic_light_clouds;
+                } else if (mIconID >= 802 && mIconID <= 804) {
+                    drawableRes = R.drawable.ic_cloudy;
+                }
+
+            }
 
             // Draw the high and low temp
             if (mHighTemp != null && mLowTemp != null) {
-                mXOffset += 80;
 
                 String highTempDisplay = mHighTemp + "°";
-                canvas.drawText(highTempDisplay, x, mXOffset + mYOffset, mTempHighPaint);
-                mXOffset += mTempHighPaint.measureText(highTempDisplay) + 5;
+                canvas.drawText(highTempDisplay, centerHorizontally(bounds, mHighTempPaint, highTempDisplay) + 15, bounds.centerY() + 75, mHighTempPaint);
 
                 String lowTempDisplay = mLowTemp + "°";
-                canvas.drawText(lowTempDisplay, x, mXOffset + mYOffset, mTempLowPaint);
-//                Log.d(TAG, "Weather High: " + mHighTemp + "Weather Low: " + mLowTemp);
+                canvas.drawText(lowTempDisplay, bounds.centerX() + mHighTempPaint.measureText(highTempDisplay) / 2 + 30, bounds.centerY() + 75, mLowTempPaint);
+                Log.d(TAG, "Weather High: " + mHighTemp + " Weather Low: " + mLowTemp);
+
+                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), drawableRes);
+                canvas.drawBitmap(bitmap, centerHorizontally(bounds, mHighTempPaint, highTempDisplay) - 75, bounds.centerY() + 30, mWeatherPaint);
             }
         }
 
@@ -361,9 +408,40 @@ public class MyWatchFace extends CanvasWatchFaceService {
         @Override
         public void onConnected(@Nullable Bundle connectionHint) {
             Wearable.DataApi.addListener(mGoogleApiClient, this);
+//            syncWeather();
             Log.d(TAG, "onConnected: " + connectionHint);
             // Now you can use the Data Layer API
         }
+
+//        private void syncWeather() {
+//            retrieveDeviceNode();
+//            if (nodeId != null) {
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mGoogleApiClient.blockingConnect(CONNECTION_TIME_OUT_MS, TimeUnit.MILLISECONDS);
+//                        Wearable.MessageApi.sendMessage(mGoogleApiClient, nodeId, MESSAGE, null);
+//                        mGoogleApiClient.disconnect();
+//                    }
+//                }).start();
+//            }
+//        }
+
+//        private void retrieveDeviceNode() {
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    mGoogleApiClient.blockingConnect(CONNECTION_TIME_OUT_MS, TimeUnit.MILLISECONDS);
+//                    NodeApi.GetConnectedNodesResult result =
+//                            Wearable.NodeApi.getConnectedNodes(mGoogleApiClient).await();
+//                    List<Node> nodes = result.getNodes();
+//                    if (nodes.size() > 0) {
+//                        nodeId = nodes.get(0).getId();
+//                    }
+//                    mGoogleApiClient.disconnect();
+//                }
+//            }).start();
+//        }
 
         @Override
         public void onConnectionSuspended(int cause) {
@@ -381,7 +459,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onDataChanged(DataEventBuffer dataEvents) {
-
             // Get the weather data sent over from the mobile device
             for (DataEvent dataEvent : dataEvents) {
                 if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
@@ -391,12 +468,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
                         mIconID = dataMap.getInt("icon-id");
                         mHighTemp = dataMap.getString("high-temp");
                         mLowTemp = dataMap.getString("low-temp");
-
+                        Log.d(TAG, "onDataChanged: " + mIconID + " " + mHighTemp + " " + mLowTemp);
                         // Refresh the screen
                         invalidate();
                     }
                 }
-
 
             }
 

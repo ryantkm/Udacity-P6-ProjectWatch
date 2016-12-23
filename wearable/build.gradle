@@ -10,12 +10,12 @@ android {
             storePassword 'example'
         }
     }
-    compileSdkVersion 25
+    compileSdkVersion 24
     buildToolsVersion '25.0.2'
     defaultConfig {
         applicationId "com.example.android.sunshine.app"
-        minSdkVersion 23
-        targetSdkVersion 25
+        minSdkVersion 20
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
     }
@@ -34,5 +34,5 @@ android {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.google.android.support:wearable:2.0.0-beta1'
-    compile 'com.google.android.gms:play-services-wearable:10.0.1'
+    compile 'com.google.android.gms:play-services-wearable:9.0.2'
 }
